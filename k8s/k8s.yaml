@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: paccachesrv
+  name: paccachesrv
+spec:
+  selector:
+    matchLabels:
+      app: paccachesrv
+  template:
+    metadata:
+      labels:
+        app: paccachesrv
+    spec:
+      containers:
+        - name: paccachesrv
+          image: roobre/paccachesrv:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: PACSRV_CACHE
+              value: /cache
+            - name: PACSRV_MIRROR
+              value: http://refractor.terabox.moe
+          volumeMounts:
+            - mountPath: /cache
+              name: cache
+      volumes:
+        - name: cache
+          hostPath:
+            path: /var/cache/pacman/pkg
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: paccachesrv
+  name: paccachesrv
+spec:
+  selector:
+    app: paccachesrv
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paccachesrv
+  namespace: paccachesrv
+spec:
+  ingressClassName: internal
+  rules:
+    - host: pacman.terabox.moe
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: paccachesrv
+                port:
+                  name: http
